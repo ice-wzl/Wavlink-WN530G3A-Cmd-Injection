@@ -1,7 +1,7 @@
 # Wavlink-WN530G3-Cmd-Injection-RCE
 This repo details the proof of concept exploit code for the Wavlink WN530G3 router
 
-# Command Injection in Wavlink WN530G3
+# Command Injection in Wavlink WN530G3A
 - Model QUANTUM D2G/WL-WN530G3A
 - You may browse all firmware for this model router from this url: https://docs.wavlink.xyz/Firmware/fm-530g3a/
 - You may obtain a copy of the firmware from this url: https://files2.wavlink.com/drivers/fw/WN530G3A_20230616_WAVLINK_M30G3_V230616.bin
