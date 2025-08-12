@@ -1,4 +1,4 @@
-# Wavlink-WN530G3A-Cmd-Injection-RCE
+# Wavlink-WN530G3A-Cmd-Injection
 This repo details the proof of concept exploit code for the Wavlink WN530G3 router
 
 # Command Injection in Wavlink WN530G3A
