@@ -500,13 +500,13 @@ led_switch.sh on`/bin/ls > /tmp/pwn.out` 1>/dev/null 2>&1
  This is a mandatory page during first time setup. The router will walk you through selecting an SSID name, and setting a WIFI password with a minimum character length of six.
 After performing that first time setup, this page is often forgotten about and not touched by an administrator or home user. This is very much a small home / Office router (SOHO) that is not designed to handle anything outside of a /24 subnet.
 - Examining the page source we can see a handful of useful values for an attacker that makes remotely fingerprinting the routers make and model trivial. These values also exist on the /login.shmtl page. Take your pick!
-<img width="271" height="151" alt="image" src="https://github.com/user-attachments/assets/6e771e8d-3663-47e8-9d52-93ebfd0a3210" />
+- <img width="271" height="151" alt="image" src="https://github.com/user-attachments/assets/6e771e8d-3663-47e8-9d52-93ebfd0a3210" />
 - Additionally on line 30 the router discloses it LAN ip address
 ```
 var localIP=”::ffff:192.168.100.1";
 ```
 - Moreover, a bit further down the page you can find the password values we are after, right there in the html.
-<img width="275" height="213" alt="image" src="https://github.com/user-attachments/assets/b1fecbc2-603e-462b-bc8f-a438f11e7d41" />
+- <img width="275" height="213" alt="image" src="https://github.com/user-attachments/assets/b1fecbc2-603e-462b-bc8f-a438f11e7d41" />
 - Now this would not be a security concern, provided this page was only viewable by logged in users, that is sadly not the case.
 - Any user, regardless of authentication status can simply curl this URI and be presented with the password…in the clear.
 - While I did create a bash script that sets proper headers, and provides only the desirable output, its really not needed if your egrep syntax is down pat.
