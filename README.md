@@ -1,5 +1,5 @@
-# Wavlink-WN530G3A-Cmd-Injections
-This repo contains the details and four proof of concept exploits for the Wavlink WN530G3 router
+# BSides NoVA 2025 Wavlink: When security and software design is an afterthought
+This repo contains the details and four proof of concept exploits for the Wavlink WN530G3 router. This research was presented at BSides NoVA 2025
 # Overview
 - Model QUANTUM D2G/WL-WN530G3A
 - You may browse all firmware for this model router from this url: https://docs.wavlink.xyz/Firmware/fm-530g3a/
